@@ -49,12 +49,13 @@ def open_port(internal_port, external_start_port=None):
     if u is None:
         return
 
-    register = lambda internal, external: u.addportmapping(internal,
-                                                           'UDP',
-                                                           u.lanaddr,
-                                                           external,
-                                                           RAIDEN_IDENTIFICATOR,
-                                                           '')
+    def register(internal, external):
+        return u.addportmapping(external,
+                         'UDP',
+                         u.lanaddr,
+                         internal,
+                         RAIDEN_IDENTIFICATOR,
+                         '')
 
     external_port = external_start_port
     success = register(internal_port, external_port)

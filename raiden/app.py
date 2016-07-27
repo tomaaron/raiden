@@ -14,6 +14,8 @@ from raiden.network.rpc.client import BlockChainService
 from raiden.console import Console
 from raiden.utils import pex, split_endpoint
 
+from raiden.network import nat
+
 log = slogging.get_logger(__name__)  # pylint: disable=invalid-name
 
 
@@ -109,14 +111,20 @@ def app(privatekey, eth_rpc_endpoint, registry_contract_address,
 
     slogging.configure(logging)
 
+    (listen_host, listen_port) = split_endpoint(listen_address)
+
     if not external_listen_address:
         # notify('if you are behind a NAT, you should set
         # `external_listen_address` and configure port forwarding on your router')
-        external_listen_address = listen_address
+        host, port = nat.open_port(listen_port) or (None, None)
+        if host:
+            nat_port = True
+            external_listen_address = "{}:{}".format(host, port)
+        else:
+            external_listen_address = listen_address
 
     # config_file = args.config_file
     rpc_connection = split_endpoint(eth_rpc_endpoint)
-    (listen_host, listen_port) = split_endpoint(listen_address)
 
     config = App.default_config.copy()
     config['host'] = listen_host
@@ -155,6 +163,9 @@ def app(privatekey, eth_rpc_endpoint, registry_contract_address,
     gevent.signal(signal.SIGTERM, event.set)
     gevent.signal(signal.SIGINT, event.set)
     event.wait()
+
+    if nat_port:
+        nat.release_port(port)
 
     app.stop()
 
