@@ -588,6 +588,58 @@ class RaidenAPI(object):
         netting_channel.settle()
         return netting_channel
 
+    def receive(self, token1, amount1):
+        from_token_bin = safe_address_decode(token1)
+        raiden_instance = self.raiden
+        try:
+            self.raiden.get_manager_by_asset_address(from_token_bin)
+        except UnknownAssetAddress as e:
+            log.error(
+                'no asset manager for %s',
+                e.asset_address,
+            )
+
+        def _in_exchange_for(self, token2, amount2):
+            def start(target_bin):
+                # TODO: parameter identifier?
+                # TODO: maybe better solution to get target_bin
+                # TODO: check if token2 is known
+                task = StartExchangeTask(
+                    1,
+                    raiden_instance,
+                    token1,
+                    amount1,
+                    token2,
+                    amount2,
+                    target_bin,
+                )
+                task.start()
+                return task
+
+            def expect(target_address):
+                # TODO: maybe better solution to get target_bin
+                exchange = Exchange(
+                    None,
+                    token1,
+                    amount1,
+                    target_address,
+                    token2,
+                    amount2,
+                    raiden_instance.address,
+                )
+
+                asset_manager = raiden_instance.get_manager_by_asset_address(token1)
+                asset_manager.transfermanager.exchanges[ExchangeKey(token1, amount2)] = exchange
+
+            self.start = start
+            self.expect = expect
+            return self
+
+        class AtomicSwap(object):
+            in_exchange_for = _in_exchange_for
+
+        return AtomicSwap()
+
     def register_on_withdrawable_callbacks(self, callbacks):
         # wrap in list if only one callback
         try:
